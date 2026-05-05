@@ -1,0 +1,27 @@
+# 仮想環境
+.venv/
+
+# Python
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+
+# Streamlit シークレット
+.streamlit/secrets.toml
+
+# 環境変数ファイル
+.env
+
+# アップロードファイル・DBファイル
+uploads/*
+!uploads/.gitkeep
+data/*.db
+
+# OS が自動生成するファイル
+.DS_Store
+Thumbs.db
+
+# エディタの設定ファイル
+.vscode/
+.idea/
