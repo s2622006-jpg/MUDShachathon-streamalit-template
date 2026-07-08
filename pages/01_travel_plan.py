@@ -1,9 +1,9 @@
 import streamlit as st
 
 from utils.database import init_plans_db, save_plan
+from utils.gemini_processing import generate_plan
 from utils.google_maps import is_available as maps_is_available
 from utils.plan_view import render_plan
-from utils.travel_plan import generate_plan
 from utils.ui import category_icon_path, render_badge, render_hero
 
 init_plans_db()
@@ -11,7 +11,7 @@ init_plans_db()
 render_hero(
     "illust_ferris_wheel_city",
     "旅行プラン自動作成",
-    "6つの質問に答えると、AIが旅行プランを自動作成します。",
+    "8つの質問に答えると、AIが旅行プランを自動作成します。",
 )
 
 PURPOSE_OPTIONS = {
@@ -54,9 +54,22 @@ with st.form("travel_plan_form"):
             if transport_choice == "その他":
                 transport_choice = st.text_input("移動手段を入力してください", value="徒歩")
             days = st.number_input("旅行日数", min_value=1, max_value=7, value=1, step=1)
+            long_travel_choice = st.selectbox(
+                "移動時間の希望",
+                ["長時間希望", "短時間希望", "あまり気にしない"],
+            )
         with col2:
-            departure = st.text_input("出発地点（例: 東京、大阪 など）", value="東京")
+            st.caption("駅名や施設名など、具体的な場所を入力すると移動ルートの精度が上がります")
+            departure = st.text_input(
+                "出発地点",
+                value="東京駅",
+                placeholder="例: 東京駅、梅田駅、新宿駅、自宅の最寄り駅など",
+            )
             pace = st.radio("旅行のペース", ["のんびり旅行したい", "予定を詰め込みたい"])
+            region_choice = st.selectbox(
+                "旅行予定の地方",
+                ["関東地方", "関西地方", "北海道", "東北地方", "中部地方", "中国・四国地方", "九州・沖縄"],
+            )
 
     submitted = st.form_submit_button("プランを作成する", type="primary", icon=":material/auto_awesome:")
 
@@ -67,6 +80,7 @@ if submitted:
         st.error("出発地点を入力してください。")
     else:
         label_to_key = {v: k for k, v in PURPOSE_OPTIONS.items()}
+
         answers = {
             "budget": int(budget),
             "num_people": int(num_people),
@@ -75,6 +89,8 @@ if submitted:
             "departure": departure,
             "days": int(days),
             "pace": pace,
+            "long_travel": long_travel_choice,
+            "region": region_choice,
         }
         with st.spinner("AIが旅行プランを作成しています..."):
             try:

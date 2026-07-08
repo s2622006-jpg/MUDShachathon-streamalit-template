@@ -15,7 +15,6 @@ def get_connection() -> sqlite3.Connection:
 
 
 # ── 旅行プラン: おすすめスポット ──────────────────────────────────
-# category は "nature"(自然) / "gourmet"(グルメ) / "adventure"(刺激) / "culture"(文化) の想定
 SPOT_CATEGORIES = ("nature", "gourmet", "adventure", "culture")
 
 
@@ -52,12 +51,7 @@ def clear_spots():
 
 
 def insert_spot(spot: dict):
-    """スポットを1件追加する
-
-    spot は name, area, category, lat, lng を必須キーとして持つ辞書。
-    description / address / typical_duration_minutes / recommended_transport /
-    price_range / tags は任意。
-    """
+    """スポットを1件追加する"""
     conn = get_connection()
     conn.execute(
         """
@@ -99,11 +93,7 @@ def get_all_areas() -> list[str]:
 
 
 def search_spots(categories: list[str] | None = None, area: str | None = None) -> list[dict]:
-    """カテゴリ・エリアでおすすめスポットを検索する
-
-    categories: ["nature", "gourmet"] のように複数指定可（OR条件）。Noneなら全カテゴリ対象。
-    area: 部分一致で絞り込み。Noneなら全エリア対象。
-    """
+    """カテゴリ・エリアでおすすめスポットを検索する"""
     conn = get_connection()
     query = "SELECT * FROM spots WHERE 1=1"
     params: list = []
@@ -137,6 +127,7 @@ def init_plans_db():
         summary TEXT,
         departure TEXT,
         purposes TEXT,
+        region TEXT, -- ⭕️ 追加：質問8の地方を保存するカラム
         total_estimated_cost INTEGER,
         plan_json TEXT NOT NULL,
         created_at DATETIME DEFAULT CURRENT_TIMESTAMP
@@ -156,24 +147,29 @@ def init_plans_db():
 
 
 def save_plan(author_name: str, plan: dict, answers: dict | None = None) -> int:
-    """生成した旅行プランをDBに保存し、公開する
+    """生成した旅行プランをDBに保存し、公開する"""
+    
+    # ⭕️ 修正：Geminiが必ずsummaryを返すスキーマになったため、綺麗に直接取得
+    summary = plan.get("summary", "旅行プランの概要")
 
-    戻り値: 保存されたプランのid
-    """
+    # ⭕️ 修正：Geminiが計算した正確なプラン合計金額（total_estimated_cost）を保存
+    estimated_cost = plan.get("total_estimated_cost", (answers or {}).get("budget", 0))
+
     conn = get_connection()
     cursor = conn.execute(
         """
         INSERT INTO plans (
-            author_name, title, summary, departure, purposes, total_estimated_cost, plan_json
-        ) VALUES (?, ?, ?, ?, ?, ?, ?)
+            author_name, title, summary, departure, purposes, region, total_estimated_cost, plan_json
+        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?)
         """,
         (
             author_name,
-            plan.get("title", ""),
-            plan.get("summary", ""),
+            plan.get("title", "無題の旅行プラン"),
+            summary,
             (answers or {}).get("departure", ""),
             ",".join((answers or {}).get("purposes", [])),
-            plan.get("total_estimated_cost", 0),
+            (answers or {}).get("region", "未設定"), # ⭕️ 追加：質問8の地方を保存
+            estimated_cost,
             json.dumps(plan, ensure_ascii=False),
         ),
     )
@@ -184,11 +180,11 @@ def save_plan(author_name: str, plan: dict, answers: dict | None = None) -> int:
 
 
 def get_all_plans() -> list[dict]:
-    """公開されているプランの一覧を新着順で取得する（plan_jsonは含まない一覧用の情報のみ）"""
+    """公開されているプランの一覧を新着順で取得する"""
     conn = get_connection()
     rows = conn.execute(
         """
-        SELECT id, author_name, title, summary, departure, purposes, total_estimated_cost, created_at
+        SELECT id, author_name, title, summary, departure, purposes, region, total_estimated_cost, created_at
         FROM plans ORDER BY created_at DESC
         """
     ).fetchall()
