@@ -13,9 +13,7 @@ __pycache__/
 # 環境変数ファイル
 .env
 
-# アップロードファイル・DBファイル
-uploads/*
-!uploads/.gitkeep
+# DBファイル
 data/*.db
 
 # OS が自動生成するファイル

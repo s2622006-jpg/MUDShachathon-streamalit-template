@@ -1,7 +1,6 @@
-# 🚀 Hackathon Streamlit Template
+# 🧳 旅行プラン自動作成アプリ
 
-ハッカソン初参加者向けの Streamlit テンプレートです。
-Fork → Clone するだけですぐに開発を始められます！
+いくつかの質問に答えるだけで、AI（Gemini）が旅行プランを自動作成するアプリです。
 
 ---
 
@@ -15,19 +14,17 @@ hackathon-streamlit-template/
 │   └── secrets.toml.example  # シークレット（APIキーなど）の記述例
 │
 ├── pages/
-│   ├── 1_📊_graph.py         # グラフのサンプルページ
-│   ├── 2_📝_form.py          # 入力フォームのサンプルページ
-│   ├── 3_🗄️_database.py     # データベースのサンプルページ
-│   ├── 4_🌐_api.py           # 外部API連携のサンプルページ
-│   ├── 5_🔐_auth.py          # ログイン機能のサンプルページ
-│   └── 6_📁_upload.py        # ファイルアップロードのサンプルページ
+│   └── 01_travel_plan.py     # 質問フォーム→AIプラン生成→地図表示ページ
 │
 ├── utils/
-│   ├── database.py           # DB接続・操作の関数
-│   └── auth.py               # 認証関連の関数
+│   ├── database.py           # おすすめスポットDB（SQLite）の操作関数
+│   ├── gemini_client.py      # プロンプト生成・Gemini API呼び出し
+│   ├── google_maps.py        # 移動時間・営業時間の取得（Google Maps）
+│   └── travel_plan.py        # 上記をまとめて呼び出す司令塔関数
 │
-├── data/                     # SQLiteのDBファイル置き場
-├── uploads/                  # アップロードファイル置き場
+├── data/
+│   ├── app.db                 # SQLiteのDBファイル（おすすめスポット等）
+│   └── seed_spots.py          # サンプルスポットをDBに投入するスクリプト
 ├── app.py                    # アプリのトップページ
 ├── .gitignore                # Git に含めないファイルの一覧
 ├── pyproject.toml            # プロジェクト・依存パッケージの設定
@@ -135,7 +132,6 @@ cp .streamlit/secrets.toml.example .streamlit/secrets.toml
 | `__pycache__/` | Python が自動生成するキャッシュファイル |
 | `.streamlit/secrets.toml` | APIキーなどの秘密情報を守るため |
 | `.env` | 環境変数ファイル（秘密情報を含む場合がある） |
-| `uploads/*` | アップロードファイルは共有不要 |
 | `data/*.db` | DBファイルは各自で生成されるため共有不要 |
 | `.DS_Store` | Mac が自動生成するファイル（不要） |
 
