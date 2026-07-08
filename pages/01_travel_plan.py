@@ -3,7 +3,7 @@ import streamlit as st
 from utils.database import init_plans_db, save_plan
 from utils.google_maps import is_available as maps_is_available
 from utils.plan_view import render_plan
-from utils.travel_plan import generate_plan
+from utils.gemini_processing import generate_plan
 
 st.set_page_config(page_title="旅行プラン自動作成", page_icon="🧳")
 
@@ -47,6 +47,7 @@ with st.form("travel_plan_form"):
     if transport_choice == "その他":
         transport_choice = st.text_input("移動手段を入力してください", value="徒歩")
 
+
     st.subheader("質問5: 出発地点")
     departure = st.text_input("出発地点（例: 東京、大阪 など）", value="東京")
 
@@ -55,6 +56,15 @@ with st.form("travel_plan_form"):
 
     st.subheader("質問6: 旅行のペース")
     pace = st.radio("ペース", ["のんびり旅行したい", "予定を詰め込みたい"])
+
+    st.subheader("質問7: 移動時間が長くなってもいいか")
+    transport_choice = st.selectbox(
+        "移動時間",
+        ["長時間希望" "短時間希望","あまり気にしない"],
+    )
+    
+    if transport_choice == "その他":
+        transport_choice = st.text_input("移動手段を入力してください", value="徒歩")
 
     submitted = st.form_submit_button("プランを作成する")
 
