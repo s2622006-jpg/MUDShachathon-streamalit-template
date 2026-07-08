@@ -74,17 +74,7 @@ def _get_api_key() -> str:
 
 
 def build_prompt(answers: dict, candidate_spots: list[dict]) -> str:
-    """質問の回答とDBのおすすめスポットから、Geminiへの指示文を組み立てる
-
-    answers は以下のキーを想定:
-        budget: str/int         例: "50000"（1人あたり・円）
-        num_people: int         例: 2
-        purposes: list[str]     例: ["nature", "gourmet"]（2つ選択）
-        transport: str          例: "レンタカー"
-        departure: str          例: "東京"
-        pace: str               例: "のんびり" or "予定を詰め込みたい"
-        days: int               例: 2（任意。無ければ1日想定）
-    """
+    """質問の回答とDBのおすすめスポットから、Geminiへの指示文を組み立てる"""
     purpose_text = "・".join(PURPOSE_LABELS.get(p, p) for p in answers.get("purposes", []))
 
     if candidate_spots:
@@ -103,18 +93,20 @@ def build_prompt(answers: dict, candidate_spots: list[dict]) -> str:
 - 人数: {answers.get("num_people")} 人
 - 旅行の目的: {purpose_text}
 - 主な移動手段: {answers.get("transport")}
-- 出発地点: {answers.get("departure")}
+- 出発地点: {answers.get("departure")} 🔴（駅名や施設名など、この具体的な場所からスタートするルートを組んでください）
+- 旅行予定の地方: {answers.get("region", "指定なし")} 🔴 修正：指定された地方内の観光地を中心に選定してください
 - 旅行日数: {answers.get("days", 1)} 日
 - 旅行のペース: {answers.get("pace")}（のんびりしたい場合は詰め込みすぎない、予定を詰めたい場合は多めにスポットを入れる）
--  移動時間が長くなってもいいか{answers.get("time")}
+- 移動時間の希望: {answers.get("long_travel", "あまり気にしない")}
 
 # 参考: おすすめスポット（データベースより。可能な限りこの中から選んでください。緯度経度も正確に引用すること）
 {spots_text}
 
 # 出力ルール
-- 出発地点から移動しやすい範囲で、条件に合ったプランを作成すること
-- 移動手段（{answers.get("transport")}）で無理なく回れる順序・時間配分にすること
-- 予算の大体60~100%のプランを考えること。ただし、どうしても厳しい場合はおすすめのお土産を紹介しこれを達成してください
+- 必ず指定された旅行予定の地方（{answers.get("region", "指定なし")}）に準じたプランを作成すること
+- 提示された具体的な出発地点（{answers.get("departure")}）から、選択された移動手段（{answers.get("transport")}）を使って現実的に移動しやすい範囲・順序・時間配分でルートを構成すること
+- 移動時間の希望（{answers.get("long_travel", "あまり気にしない")}）を考慮し、「短時間がいい」と言われた場合は移動時間を短く近場でまとめ、「長時間でもOK」と言われた場合は少し遠出のスポットも含めてルートを構成すること
+- 予算の大体60~100%のプランを考えること。ただし、どうしても厳しい場合はおすすめのお土産を紹介しこれを達成してください。
 - spots は訪問順（時刻順）に並べたフラットな配列にすること。旅行日数が2日以上の場合は、各要素の day に何日目かを1始まりで入れること。1日プランなら全要素 day=1 とすること
 - 各スポットには必ず正確な緯度(latitude)と経度(longitude)を含めること。地図表示に使うため絶対に省略しないこと（参考スポットにあるものはその値をそのまま使い、独自提案する場合は実在する正確な緯度経度を入れること）
 - 予算内に収まるよう total_estimated_cost を調整すること
@@ -139,3 +131,14 @@ def generate_travel_plan(answers: dict, candidate_spots: list[dict]) -> dict:
     )
 
     return json.loads(response.text)
+
+
+# ⭕️ 追加：フロントエンド（01_travel_plan.py）からの呼び出し名を一致させるための仲介関数
+def generate_plan(answers: dict) -> dict:
+    """フロントエンドの単一引数(answers)による呼び出しを
+    このモジュールの generate_travel_plan に繋ぐためのラッパー関数
+    """
+    # 必要に応じてDBからおすすめスポットを検索するロジック（なければ空リスト）を入れる
+    # 現状は空リストを渡してGemini自身の知識でフル生成させます
+    candidate_spots = []
+    return generate_travel_plan(answers, candidate_spots)

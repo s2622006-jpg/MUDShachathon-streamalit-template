@@ -10,7 +10,7 @@ st.set_page_config(page_title="旅行プラン自動作成", page_icon="🧳")
 init_plans_db()
 
 st.title("🧳 旅行プラン自動作成")
-st.write("6つの質問に答えると、AIが旅行プランを自動作成します。")
+st.write("8つの質問に答えると、AIが旅行プランを自動作成します。")
 
 PURPOSE_OPTIONS = {
     "nature": "自然を堪能したい",
@@ -47,9 +47,14 @@ with st.form("travel_plan_form"):
     if transport_choice == "その他":
         transport_choice = st.text_input("移動手段を入力してください", value="徒歩")
 
-
+    # ⭕️ 修正：具体的な場所を入力してもらうための案内を追加
     st.subheader("質問5: 出発地点")
-    departure = st.text_input("出発地点（例: 東京、大阪 など）", value="東京")
+    st.caption("⚠️ より正確な移動ルートを計算するため、駅名や施設名など具体的な場所を入力してください。")
+    departure = st.text_input(
+        "出発地点（具体的な場所を入力してください）", 
+        value="東京駅", 
+        placeholder="例: 東京駅、梅田駅、新宿駅、自宅の最寄り駅など"
+    )
 
     st.subheader("旅行日数")
     days = st.number_input("日数", min_value=1, max_value=7, value=1, step=1)
@@ -58,13 +63,16 @@ with st.form("travel_plan_form"):
     pace = st.radio("ペース", ["のんびり旅行したい", "予定を詰め込みたい"])
 
     st.subheader("質問7: 移動時間が長くなってもいいか")
-    transport_choice = st.selectbox(
-        "移動時間",
-        ["長時間希望" "短時間希望","あまり気にしない"],
+    long_travel_choice = st.selectbox(
+        "移動時間の希望",
+        ["長時間希望", "短時間希望", "あまり気にしない"],
     )
-    
-    if transport_choice == "その他":
-        transport_choice = st.text_input("移動手段を入力してください", value="徒歩")
+
+    st.subheader("質問8: 旅行予定の地方")
+    region_choice = st.selectbox(
+        "地方を選択してください",
+        ["関東地方", "関西地方", "北海道", "東北地方", "中部地方", "中国・四国地方", "九州・沖縄"],
+    )
 
     submitted = st.form_submit_button("プランを作成する")
 
@@ -75,6 +83,7 @@ if submitted:
         st.error("出発地点を入力してください。")
     else:
         label_to_key = {v: k for k, v in PURPOSE_OPTIONS.items()}
+        
         answers = {
             "budget": int(budget),
             "num_people": int(num_people),
@@ -83,6 +92,8 @@ if submitted:
             "departure": departure,
             "days": int(days),
             "pace": pace,
+            "long_travel": long_travel_choice,
+            "region": region_choice,
         }
         with st.spinner("AIが旅行プランを作成しています..."):
             try:
