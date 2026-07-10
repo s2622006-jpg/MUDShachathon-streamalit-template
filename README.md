@@ -26,6 +26,9 @@ hackathon-streamlit-template/
 │   ├── app.db                 # SQLiteのDBファイル（おすすめスポット等）
 │   └── seed_spots.py          # サンプルスポットをDBに投入するスクリプト
 ├── app.py                    # アプリのトップページ
+├── Dockerfile                 # Docker イメージのビルド定義
+├── docker-compose.yml         # Docker での起動設定
+├── .dockerignore              # Docker イメージに含めないファイルの一覧
 ├── .gitignore                # Git に含めないファイルの一覧
 ├── pyproject.toml            # プロジェクト・依存パッケージの設定
 └── README.md                 # このファイル
@@ -107,6 +110,27 @@ streamlit run app.py
 ```
 
 ブラウザで `http://localhost:8501` が自動で開きます 🎉
+
+---
+
+## 🐳 Docker で環境を統一したい場合（任意）
+
+Python/uv のバージョンなどを開発メンバー全員で揃えたい場合は、Docker でも起動できます。
+Step 3〜6（仮想環境の作成など）は不要になり、以下の2コマンドだけで動きます。
+
+```bash
+docker compose up -d
+```
+
+ブラウザで `http://localhost:8501` を開いてください。停止する場合は次のコマンドです。
+
+```bash
+docker compose down
+```
+
+> 💡 プロジェクトフォルダ全体をコンテナと同期しているので、`data/app.db` などのSQLiteファイルはホスト側にそのまま残ります。
+> `.streamlit/secrets.toml` や `.env` を使う場合は、通常通りこのフォルダの中に作成しておけばコンテナ側からも自動で読み込まれます（次の「APIキーなどの秘密情報を使いたい場合」を参照）。
+> `.venv` だけはOS間の互換性の問題を避けるため、コンテナ専用のボリュームに分離しています。
 
 ---
 

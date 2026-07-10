@@ -142,6 +142,12 @@ def init_plans_db():
         created_at DATETIME DEFAULT CURRENT_TIMESTAMP
         )
     """)
+
+    # 既存のplansテーブルに旧スキーマ（region列なし）が残っている場合への移行措置
+    existing_columns = {row["name"] for row in conn.execute("PRAGMA table_info(plans)").fetchall()}
+    if "region" not in existing_columns:
+        conn.execute("ALTER TABLE plans ADD COLUMN region TEXT")
+
     conn.commit()
     conn.close()
 
