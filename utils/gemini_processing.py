@@ -72,6 +72,7 @@ class TravelPlannerBackend:
         * 各スポットの緯度(latitude)と経度(longitude)は必ず実在する正しい数値を調べて入れてください。
         * spots は訪問順（時刻順）に並べた配列にすること。旅行日数が2日以上の場合は、各要素の day に何日目かを1始まりで入れること。
         * 予算内に収まるよう total_estimated_cost や各スポットの estimated_cost を調整すること。
+        * spots の1番目の要素（day=1の最初の時刻）は、必ず出発地「{dep}」そのもの、またはその近辺（{dep}周辺でのレンタカーピックアップ・改札口など）にすること。観光スポットからいきなり始めず、必ず「{dep}」を起点としたルートにすること。
         {must_visit_note}"""
 
         # Gemini APIへ通信
