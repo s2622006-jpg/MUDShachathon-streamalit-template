@@ -35,12 +35,12 @@ def _render_day_spots(day_num: int, day_spots: list[dict], color: str, fmap: fol
 
             travel_minutes = spot.get("travel_time_to_next_minutes")
             if travel_minutes is not None:
-                st.caption(f"次の場所まで {spot.get('transport_to_next', '')} で 約{travel_minutes}分")
+                st.caption(f"次の場所まで {spot.get('transport_to_next') or ''} で 約{travel_minutes}分")
 
             if spot.get("latitude") is not None and spot.get("longitude") is not None:
                 point = (spot["latitude"], spot["longitude"])
                 day_points.append(point)
-                transports.append(spot.get("transport_to_next", ""))
+                transports.append(spot.get("transport_to_next") or "")
                 folium.Marker(
                     location=point,
                     popup=f"{day_num}日目: {spot.get('name', '')}",

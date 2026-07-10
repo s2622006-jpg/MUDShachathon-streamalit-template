@@ -49,10 +49,10 @@ DUMMY_SPEED_KMH = {
 }
 
 
-def transport_to_mode(transport: str) -> str:
+def transport_to_mode(transport: str | None) -> str:
     """「レンタカー」などの日本語表記をGoogle Mapsのmodeに変換する"""
     for key, mode in TRANSPORT_MODE_MAP.items():
-        if key in transport:
+        if transport and key in transport:
             return mode
     return "driving"
 
