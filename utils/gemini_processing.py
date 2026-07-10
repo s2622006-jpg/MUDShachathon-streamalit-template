@@ -41,13 +41,21 @@ class TravelPlannerBackend:
         self.client = genai.Client(api_key=api_key)
 
     # ⭕️ 修正：引数に region を追加
-    def generate_plan(self, dep: str, num: int, bg: str, style: str, trans: str, days_count: str, purposes_text: str, longs_traveltime: str, region: str) -> dict:
+    def generate_plan(self, dep: str, num: int, bg: str, style: str, trans: str, days_count: str, purposes_text: str, longs_traveltime: str, region: str, must_visit: str = "") -> dict:
         """フロントエンドから条件を受け取り、Geminiで旅行プラン(辞書型)を生成する関数"""
-        
+
+        # 絶対に行きたい場所が指定されている場合のみ、条件・注意点に追記する
+        must_visit_condition = f"* 絶対に行きたい場所: {must_visit}\n        " if must_visit else ""
+        must_visit_note = (
+            f"* 「{must_visit}」は必ずスポットに含め、他のスポットや移動ルートもこの場所を軸に無理のない形で組み立ててください。\n        "
+            if must_visit
+            else ""
+        )
+
         # ⭕️ 修正：プロンプトを特定の地方（region）に縛るように修正し、出発地点の具体性も強調
         prompt = f"""
         以下の条件に完全に合致する、{region}限定の旅行プランを1つつくってください。
-        
+
         【条件】
         * 旅行予定の地方: {region}
         * 出発地: {dep} （駅名や施設名などの具体的な出発地点です。必ずここから出発する現実的なルートを構成してください）
@@ -58,13 +66,13 @@ class TravelPlannerBackend:
         * 主な移動手段: {trans}
         * 旅行日数: {days_count}日間
         * 移動時間の希望: {longs_traveltime}（「短時間がいい」場合は移動距離が短い近場を提案し、「長時間でもOK」の場合は遠出も含めること）
-        
+        {must_visit_condition}
         【絶対厳守の注意点】
         * 提案するスポットは、必ず指定された「{region}」の中にある実在の観光地や飲食店にしてください。
         * 各スポットの緯度(latitude)と経度(longitude)は必ず実在する正しい数値を調べて入れてください。
         * spots は訪問順（時刻順）に並べた配列にすること。旅行日数が2日以上の場合は、各要素の day に何日目かを1始まりで入れること。
         * 予算内に収まるよう total_estimated_cost や各スポットの estimated_cost を調整すること。
-        """
+        {must_visit_note}"""
 
         # Gemini APIへ通信
         response = self.client.models.generate_content(
@@ -105,5 +113,6 @@ def generate_plan(answers: dict) -> dict:
         days_count=str(answers.get("days", 1)),
         purposes_text=purposes_text,
         longs_traveltime=answers.get("long_travel", "あまり気にしない"),
-        region=answers.get("region", "関東地方") # ⭕️ 追加：フロントエンドから届いた地方を取得
+        region=answers.get("region", "関東地方"), # ⭕️ 追加：フロントエンドから届いた地方を取得
+        must_visit=answers.get("must_visit", ""),
     )

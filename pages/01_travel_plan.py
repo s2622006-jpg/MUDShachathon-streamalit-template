@@ -71,6 +71,14 @@ with st.form("travel_plan_form"):
                 ["関東地方", "関西地方", "北海道", "東北地方", "中部地方", "中国・四国地方", "九州・沖縄"],
             )
 
+    with st.container(border=True):
+        st.caption("こだわり（任意）")
+        must_visit = st.text_input(
+            "絶対に行きたい場所",
+            value="",
+            placeholder="例: 伏見稲荷大社、道頓堀、美瑛の丘 など",
+        )
+
     submitted = st.form_submit_button("プランを作成する", type="primary", icon=":material/auto_awesome:")
 
 if submitted:
@@ -91,6 +99,7 @@ if submitted:
             "pace": pace,
             "long_travel": long_travel_choice,
             "region": region_choice,
+            "must_visit": must_visit.strip(),
         }
         with st.spinner("AIが旅行プランを作成しています..."):
             try:
