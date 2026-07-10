@@ -1,17 +1,24 @@
 import json
-import sqlite3
-from pathlib import Path
 
-# DBファイルのパス
-DB_PATH = Path("data/app.db")
+import libsql_client
+import streamlit as st
+
+# TURSO_DATABASE_URL が未設定の場合は、従来通りローカルのSQLiteファイルを使う
+DB_PATH = "data/app.db"
 
 
-def get_connection() -> sqlite3.Connection:
-    """DBに接続する"""
-    conn = sqlite3.connect(DB_PATH)
-    # 辞書形式で結果を取得できるようにする
-    conn.row_factory = sqlite3.Row
-    return conn
+def get_connection() -> libsql_client.ClientSync:
+    """DBに接続する（Turso設定済みならクラウドDB、未設定ならローカルファイル）"""
+    turso_url = st.secrets.get("TURSO_DATABASE_URL", "")
+    if turso_url:
+        # libsql:// (WebSocket/Hrana経由) は手元のlibsql-clientのバージョンとサーバー側の
+        # プロトコルが噛み合わずハンドシェイクに失敗するため、https:// (HTTP経由) に変換して使う
+        https_url = turso_url.replace("libsql://", "https://", 1)
+        return libsql_client.create_client_sync(
+            url=https_url,
+            auth_token=st.secrets.get("TURSO_AUTH_TOKEN", ""),
+        )
+    return libsql_client.create_client_sync(url=f"file:{DB_PATH}")
 
 
 # ── 旅行プラン: おすすめスポット ──────────────────────────────────
@@ -38,7 +45,6 @@ def init_spots_db():
         created_at DATETIME DEFAULT CURRENT_TIMESTAMP
         )
     """)
-    conn.commit()
     conn.close()
 
 
@@ -46,7 +52,6 @@ def clear_spots():
     """スポットを全削除（再投入前のリセット用）"""
     conn = get_connection()
     conn.execute("DELETE FROM spots")
-    conn.commit()
     conn.close()
 
 
@@ -74,7 +79,6 @@ def insert_spot(spot: dict):
             spot.get("tags", ""),
         ),
     )
-    conn.commit()
     conn.close()
 
 
@@ -87,7 +91,7 @@ def bulk_insert_spots(spots: list[dict]):
 def get_all_areas() -> list[str]:
     """登録済みのエリア一覧を取得する"""
     conn = get_connection()
-    rows = conn.execute("SELECT DISTINCT area FROM spots ORDER BY area").fetchall()
+    rows = conn.execute("SELECT DISTINCT area FROM spots ORDER BY area").rows
     conn.close()
     return [row["area"] for row in rows]
 
@@ -108,9 +112,9 @@ def search_spots(categories: list[str] | None = None, area: str | None = None) -
         params.append(f"%{area}%")
 
     query += " ORDER BY area, category"
-    rows = conn.execute(query, params).fetchall()
+    rows = conn.execute(query, params).rows
     conn.close()
-    return [dict(row) for row in rows]
+    return [row.asdict() for row in rows]
 
 
 # ── 旅行プラン: みんなのプラン共有・コメント ──────────────────────────────────
@@ -144,11 +148,10 @@ def init_plans_db():
     """)
 
     # 既存のplansテーブルに旧スキーマ（region列なし）が残っている場合への移行措置
-    existing_columns = {row["name"] for row in conn.execute("PRAGMA table_info(plans)").fetchall()}
+    existing_columns = {row["name"] for row in conn.execute("PRAGMA table_info(plans)").rows}
     if "region" not in existing_columns:
         conn.execute("ALTER TABLE plans ADD COLUMN region TEXT")
 
-    conn.commit()
     conn.close()
 
 
@@ -162,7 +165,7 @@ def save_plan(author_name: str, plan: dict, answers: dict | None = None) -> int:
     estimated_cost = plan.get("total_estimated_cost", (answers or {}).get("budget", 0))
 
     conn = get_connection()
-    cursor = conn.execute(
+    result = conn.execute(
         """
         INSERT INTO plans (
             author_name, title, summary, departure, purposes, region, total_estimated_cost, plan_json
@@ -179,8 +182,7 @@ def save_plan(author_name: str, plan: dict, answers: dict | None = None) -> int:
             json.dumps(plan, ensure_ascii=False),
         ),
     )
-    conn.commit()
-    plan_id = cursor.lastrowid
+    plan_id = result.last_insert_rowid
     conn.close()
     return plan_id
 
@@ -193,19 +195,19 @@ def get_all_plans() -> list[dict]:
         SELECT id, author_name, title, summary, departure, purposes, region, total_estimated_cost, created_at
         FROM plans ORDER BY created_at DESC
         """
-    ).fetchall()
+    ).rows
     conn.close()
-    return [dict(row) for row in rows]
+    return [row.asdict() for row in rows]
 
 
 def get_plan(plan_id: int) -> dict | None:
     """プランの詳細(plan_jsonをパース済み)を取得する"""
     conn = get_connection()
-    row = conn.execute("SELECT * FROM plans WHERE id = ?", (plan_id,)).fetchone()
+    rows = conn.execute("SELECT * FROM plans WHERE id = ?", (plan_id,)).rows
     conn.close()
-    if row is None:
+    if not rows:
         return None
-    plan_row = dict(row)
+    plan_row = rows[0].asdict()
     plan_row["plan"] = json.loads(plan_row["plan_json"])
     return plan_row
 
@@ -217,7 +219,6 @@ def add_comment(plan_id: int, author_name: str, comment: str):
         "INSERT INTO plan_comments (plan_id, author_name, comment) VALUES (?, ?, ?)",
         (plan_id, author_name, comment),
     )
-    conn.commit()
     conn.close()
 
 
@@ -227,6 +228,6 @@ def get_comments(plan_id: int) -> list[dict]:
     rows = conn.execute(
         "SELECT * FROM plan_comments WHERE plan_id = ? ORDER BY created_at ASC",
         (plan_id,),
-    ).fetchall()
+    ).rows
     conn.close()
-    return [dict(row) for row in rows]
+    return [row.asdict() for row in rows]

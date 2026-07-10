@@ -10,6 +10,7 @@ import folium
 import streamlit as st
 from streamlit_folium import st_folium
 
+from utils.google_maps import get_route_path
 from utils.ui import category_icon_path, render_badge
 
 DAY_COLORS = ["red", "blue", "green", "purple", "orange", "darkred", "cadetblue"]
@@ -18,6 +19,7 @@ DAY_COLORS = ["red", "blue", "green", "purple", "orange", "darkred", "cadetblue"
 def _render_day_spots(day_num: int, day_spots: list[dict], color: str, fmap: folium.Map) -> list[tuple]:
     """1日分のスポット一覧をカード内に描画し、地図用の座標リストを返す"""
     day_points = []
+    transports = []
     with st.container(border=True):
         for spot in day_spots:
             cols = st.columns([1, 1, 3, 1])
@@ -38,6 +40,7 @@ def _render_day_spots(day_num: int, day_spots: list[dict], color: str, fmap: fol
             if spot.get("latitude") is not None and spot.get("longitude") is not None:
                 point = (spot["latitude"], spot["longitude"])
                 day_points.append(point)
+                transports.append(spot.get("transport_to_next", ""))
                 folium.Marker(
                     location=point,
                     popup=f"{day_num}日目: {spot.get('name', '')}",
@@ -45,8 +48,11 @@ def _render_day_spots(day_num: int, day_spots: list[dict], color: str, fmap: fol
                     icon=folium.Icon(color=color),
                 ).add_to(fmap)
 
-    if len(day_points) >= 2:
-        folium.PolyLine(day_points, color=color, weight=3, opacity=0.7).add_to(fmap)
+    # 隣接スポット間を、道路に沿った経路（取得できない場合は直線）で結ぶ
+    for i in range(len(day_points) - 1):
+        origin, dest = day_points[i], day_points[i + 1]
+        path = get_route_path(origin[0], origin[1], dest[0], dest[1], transports[i])
+        folium.PolyLine(path or [origin, dest], color=color, weight=3, opacity=0.7).add_to(fmap)
 
     return day_points
 

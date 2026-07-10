@@ -23,12 +23,9 @@ hackathon-streamlit-template/
 │   └── travel_plan.py        # 上記をまとめて呼び出す司令塔関数
 │
 ├── data/
-│   ├── app.db                 # SQLiteのDBファイル（おすすめスポット等）
+│   ├── app.db                 # SQLiteのDBファイル（Turso未設定時はこれを使用）
 │   └── seed_spots.py          # サンプルスポットをDBに投入するスクリプト
 ├── app.py                    # アプリのトップページ
-├── Dockerfile                 # Docker イメージのビルド定義
-├── docker-compose.yml         # Docker での起動設定
-├── .dockerignore              # Docker イメージに含めないファイルの一覧
 ├── .gitignore                # Git に含めないファイルの一覧
 ├── pyproject.toml            # プロジェクト・依存パッケージの設定
 └── README.md                 # このファイル
@@ -83,24 +80,32 @@ hackathon-streamlit-template/
 
 ---
 
-## 🐳 Docker で環境を統一したい場合（任意）
+## ☁️ 「みんなのプラン」をチームで共有したい場合（任意）
 
-Python/uv のバージョンなどを開発メンバー全員で揃えたい場合は、Docker でも起動できます。
-仮想環境の作成やパッケージのインストールは不要になり、以下のコマンドだけで動きます。
+デフォルトでは `data/app.db`（ローカルのSQLiteファイル）が使われるため、各自の環境で生成・公開したプランは他のメンバーには見えません。
+チーム全員が同じデータを見られるようにしたい場合は、[Turso](https://turso.tech/)（SQLite互換のクラウドDB）に切り替えられます。
 
-```bash
-docker compose up -d
-```
+1. Turso CLIをインストールし、DBを作成する
 
-ブラウザで `http://localhost:8501` を開いてください。停止する場合は次のコマンドです。
+   ```bash
+   curl -sSfL https://get.tur.so/install.sh | bash
+   turso auth login
+   turso db create travel-app-db
+   turso db show travel-app-db --url
+   turso db tokens create travel-app-db
+   ```
 
-```bash
-docker compose down
-```
+2. `secrets.toml` に発行された値を記入する
 
-> 💡 プロジェクトフォルダ全体をコンテナと同期しているので、`data/app.db` などのSQLiteファイルはホスト側にそのまま残ります。
-> `.streamlit/secrets.toml` や `.env` を使う場合は、通常通りこのフォルダの中に作成しておけばコンテナ側からも自動で読み込まれます（次の「APIキーなどの秘密情報を使いたい場合」を参照）。
-> `.venv` だけはOS間の互換性の問題を避けるため、コンテナ専用のボリュームに分離しています。
+   ```toml
+   TURSO_DATABASE_URL = "libsql://travel-app-db-xxxxx.turso.io"
+   TURSO_AUTH_TOKEN = "xxxxx"
+   ```
+
+3. アプリを再起動すれば、以降は自動でTursoのDBが使われます。
+
+> 💡 `TURSO_DATABASE_URL` が未設定の場合は、従来通り `data/app.db` が使われるので、Tursoを使わない開発者にも影響はありません。
+> `TURSO_AUTH_TOKEN` は秘密情報なので、Slackなど安全な経路でチームに共有してください（Gitには含めないでください）。
 
 ---
 
